@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Role Assigner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
+        <div class="bg-white rounded-2xl shadow-lg p-8">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900">AI-Powered Role Assigner</h1>
+                <p class="text-gray-600 mt-2">Enter the names of staff working today to automatically assign roles based on their skill matrix.</p>
+            </header>
+
+            <main>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Input Section -->
+                    <div>
+                        <label for="names-input" class="block text-lg font-semibold mb-2 text-gray-700">Today's Staff</label>
+                        <textarea id="names-input" rows="10" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="Enter one name per line...&#10;Alice&#10;Bob&#10;Charlie&#10;Diana"></textarea>
+                        <button id="assign-btn" class="mt-4 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 shadow-md">
+                            Assign Roles
+                        </button>
+                    </div>
+
+                    <!-- Output Section -->
+                    <div>
+                        <h2 class="text-lg font-semibold mb-2 text-gray-700">Daily Assignments</h2>
+                        <div id="results" class="space-y-3">
+                           <div class="text-gray-500 italic p-4 bg-gray-100 rounded-lg">Assignments will appear here...</div>
+                        </div>
+                         <div id="unassigned-container" class="mt-6 hidden">
+                            <h3 class="text-md font-semibold mb-2 text-gray-700">Unassigned (Floaters)</h3>
+                            <div id="unassigned-list" class="text-gray-600 p-3 bg-gray-100 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="error-message" class="mt-6 text-center text-red-600 font-medium hidden"></div>
+            </main>
+        </div>
+        <footer class="text-center mt-6 text-gray-500 text-sm">
+            <p>&copy; 2025 Startup Operations AI. Built to make your team faster.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const assignBtn = document.getElementById('assign-btn');
+            const namesInput = document.getElementById('names-input');
+            const resultsDiv = document.getElementById('results');
+            const errorMessage = document.getElementById('error-message');
+            const unassignedContainer = document.getElementById('unassigned-container');
+            const unassignedList = document.getElementById('unassigned-list');
+
+            // --- STEP 1: DEFINE YOUR ROLES ---
+            // These are the roles you need to fill each day.
+            const roles = [
+                'Inspects left side',
+                'Inspects right side',
+                'Chips out left side',
+                'Chips out right side',
+                'Resources machines 40 and 41',
+                'Resources all other machines'
+            ];
+
+            // --- STEP 2: EDIT THE PEOPLE MATRIX ---
+            // This is the core "AI" brain. It's a map of your team members and their skill levels for each role.
+            // Rate each person from 1 (lowest skill) to 5 (highest skill).
+            // A score of 0 means they cannot perform the role.
+            // **ACTION REQUIRED: Replace the sample names and scores with your actual team's data.**
+            const peopleMatrix = {
+                // Team data updated based on your input
+                'jeremy': {
+                    'Inspects left side': 2,
+                    'Inspects right side': 2,
+                    'Chips out left side': 2,
+                    'Chips out right side': 2,
+                    'Resources machines 40 and 41': 2,
+                    'Resources all other machines': 3
+                },
+                'pj': {
+                    'Inspects left side': 2,
+                    'Inspects right side': 2,
+                    'Chips out left side': 2,
+                    'Chips out right side': 2,
+                    'Resources machines 40 and 41': 1,
+                    'Resources all other machines': 1
+                },
+                'dana': {
+                    'Inspects left side': 3,
+                    'Inspects right side': 3,
+                    'Chips out left side': 2,
+                    'Chips out right side': 2,
+                    'Resources machines 40 and 41': 3,
+                    'Resources all other machines': 2
+                },
+                'jason': {
+                    'Inspects left side': 3,
+                    'Inspects right side': 3,
+                    'Chips out left side': 2,
+                    'Chips out right side': 2,
+                    'Resources machines 40 and 41': 1,
+                    'Resources all other machines': 1
+                },
+                'tyler': {
+                    'Inspects left side': 1,
+                    'Inspects right side': 1,
+                    'Chips out left side': 3,
+                    'Chips out right side': 3,
+                    'Resources machines 40 and 41': 1,
+                    'Resources all other machines': 1
+                },
+                'gavin': {
+                    'Inspects left side': 2,
+                    'Inspects right side': 2,
+                    'Chips out left side': 3,
+                    'Chips out right side': 3,
+                    'Resources machines 40 and 41': 1,
+                    'Resources all other machines': 1
+                },
+                'mike': {
+                    'Inspects left side': 2,
+                    'Inspects right side': 2,
+                    'Chips out left side': 2,
+                    'Chips out right side': 2,
+                    'Resources machines 40 and 41': 2,
+                    'Resources all other machines': 2
+                }
+            };
+
+            // --- THE AI ASSIGNMENT LOGIC ---
+            function assignRoles() {
+                const names = namesInput.value.split('\n')
+                    .map(name => name.trim().toLowerCase())
+                    .filter(name => name.length > 0);
+
+                // Clear previous results and errors
+                resultsDiv.innerHTML = '';
+                errorMessage.textContent = '';
+                errorMessage.classList.add('hidden');
+                unassignedContainer.classList.add('hidden');
+                unassignedList.innerHTML = '';
+                
+                if (names.length === 0) {
+                    errorMessage.textContent = 'Please enter at least one name.';
+                    errorMessage.classList.remove('hidden');
+                    return;
+                }
+
+                // Validate that all entered names are in the matrix
+                const unknownNames = names.filter(name => !peopleMatrix[name]);
+                if (unknownNames.length > 0) {
+                    errorMessage.textContent = `Error: The following names are not in the People Matrix: ${unknownNames.join(', ')}. Please add them to the code or correct the spelling.`;
+                    errorMessage.classList.remove('hidden');
+                    return;
+                }
+
+                let availablePeople = [...names];
+                const assignments = {};
+
+                // Create a copy of roles to fill
+                let rolesToFill = [...roles];
+                
+                // --- NEW LOGIC FOR PJ's ASSIGNMENT ---
+                const coreRoles = ['Inspects left side', 'Inspects right side', 'Chips out left side', 'Chips out right side'];
+                const pjIsWorking = availablePeople.includes('pj');
+                const enoughPeopleForCoreTasks = (availablePeople.length - 1) >= coreRoles.length;
+
+                // Pre-assign PJ if he is working and there are enough other people for core tasks
+                if (pjIsWorking && enoughPeopleForCoreTasks) {
+                    const pjRole = 'Resources machines 40 and 41';
+                    assignments[pjRole] = 'pj';
+                    availablePeople = availablePeople.filter(p => p !== 'pj');
+                    rolesToFill = rolesToFill.filter(r => r !== pjRole);
+                }
+                // --- END OF NEW LOGIC ---
+
+                // The algorithm: iterate through roles and assign the best person available.
+                while (rolesToFill.length > 0 && availablePeople.length > 0) {
+                    const role = rolesToFill.shift(); // Get the next role to fill
+                    
+                    // Find the best person for this role from the available pool
+                    let bestPerson = null;
+                    let highestScore = -1;
+
+                    // Sort available people by their score for the current role, in descending order.
+                    // A small random factor is added to break ties and introduce variety.
+                    const sortedCandidates = [...availablePeople].sort((a, b) => {
+                        const scoreA = peopleMatrix[a][role] || 0;
+                        const scoreB = peopleMatrix[b][role] || 0;
+                        return (scoreB + Math.random() * 0.1) - (scoreA + Math.random() * 0.1);
+                    });
+
+                    // Assign the top candidate if they can do the job (score > 0)
+                    if (sortedCandidates.length > 0 && (peopleMatrix[sortedCandidates[0]][role] || 0) > 0) {
+                        bestPerson = sortedCandidates[0];
+                        assignments[role] = bestPerson;
+                        // Remove the assigned person from the available pool
+                        availablePeople = availablePeople.filter(p => p !== bestPerson);
+                    } else {
+                        assignments[role] = 'Unassigned'; // Could not find a suitable person
+                    }
+                }
+                
+                // Any remaining roles that couldn't be filled
+                rolesToFill.forEach(role => {
+                    assignments[role] = 'Unassigned';
+                });
+
+                displayResults(assignments, availablePeople);
+            }
+            
+            function displayResults(assignments, unassigned) {
+                resultsDiv.innerHTML = ''; // Clear previous results
+                
+                roles.forEach((role, index) => {
+                    const assignedPerson = assignments[role] || 'Unassigned';
+                    const personNameCapitalized = assignedPerson.charAt(0).toUpperCase() + assignedPerson.slice(1);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'p-4 border rounded-lg flex justify-between items-center fade-in bg-white shadow-sm';
+                    card.style.animationDelay = `${index * 50}ms`;
+
+                    const roleInfo = document.createElement('div');
+                    roleInfo.className = 'font-semibold text-gray-700';
+                    roleInfo.textContent = role;
+                    
+                    const personInfo = document.createElement('div');
+                    personInfo.className = `font-bold px-3 py-1 rounded-full text-sm ${assignedPerson !== 'Unassigned' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-200 text-gray-600'}`;
+                    personInfo.textContent = personNameCapitalized;
+
+                    card.appendChild(roleInfo);
+                    card.appendChild(personInfo);
+                    resultsDiv.appendChild(card);
+                });
+
+                // Display unassigned people (floaters) if any
+                if (unassigned.length > 0) {
+                    unassignedContainer.classList.remove('hidden');
+                    unassignedList.innerHTML = unassigned.map(name => name.charAt(0).toUpperCase() + name.slice(1)).join(', ');
+                }
+            }
+
+            assignBtn.addEventListener('click', assignRoles);
+        });
+    </script>
+</body>
+</html>
+
